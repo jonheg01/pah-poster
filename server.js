@@ -94,7 +94,7 @@ app.get("/login", basicAuth, (_req, res) => {
 app.get("/shots/:name", apiAuth, (req, res) => { const f = path.join(SHOTS, path.basename(req.params.name)); if (!fs.existsSync(f)) return res.status(404).end(); res.sendFile(f); });
 
 // noVNC (static + websocket) behind basic auth.
-const vncProxy = createProxyMiddleware({ target: "http://127.0.0.1:6080", changeOrigin: true, ws: true, pathRewrite: { "^/vnc": "" } });
+const vncProxy = createProxyMiddleware({ target: "http://127.0.0.1:6080", changeOrigin: true, ws: true, pathRewrite: (p) => p.replace(/^\/vnc(?=\/|$)/, "") || "/" });
 app.use("/vnc", basicAuth, vncProxy);
 
 const port = Number(process.env.PORT || 3000);
