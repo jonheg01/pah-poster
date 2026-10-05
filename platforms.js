@@ -28,7 +28,7 @@ const signoff = (d) => `\n\nJon Hegreness, REALTOR and Associate Broker, Howe Re
 const medium = {
   home: "https://medium.com/me/stories/drafts",
   loginUrl: "https://medium.com/m/signin",
-  async isLoggedIn(page) { await page.goto("https://medium.com/me/stories/drafts", { waitUntil: "domcontentloaded" }); await sleep(2500); return !/signin|\/m\/|login/.test(page.url()) && (await page.locator('a[href*="/new-story"], button:has-text("Write"), a:has-text("Write")').count()) > 0; },
+  async isLoggedIn(page) { await page.goto("https://medium.com/me/settings", { waitUntil: "domcontentloaded" }); await sleep(3000); return /medium\.com\/me\//.test(page.url()); },
   async post(page, d) {
     if (!d.source_url) throw new Error("medium needs source_url (the PAH post) for import");
     await page.goto("https://medium.com/p/import", { waitUntil: "domcontentloaded" });
@@ -55,7 +55,7 @@ const medium = {
 const substack = {
   home: "https://substack.com/home",
   loginUrl: "https://substack.com/sign-in",
-  async isLoggedIn(page) { await page.goto("https://substack.com/home", { waitUntil: "domcontentloaded" }); await sleep(2500); return !/sign-in|login/.test(page.url()); },
+  async isLoggedIn(page) { await page.goto("https://substack.com/settings", { waitUntil: "domcontentloaded" }); await sleep(3000); return /substack\.com\/settings/.test(page.url()) && !(await page.locator('input[type="email"]').count()); },
   async post(page, d) {
     const pub = process.env.SUBSTACK_PUBLICATION; // e.g. jonhegreness.substack.com (without https)
     if (!pub) throw new Error("SUBSTACK_PUBLICATION env not set");
@@ -88,7 +88,7 @@ const substack = {
 const linkedin = {
   home: "https://www.linkedin.com/feed/",
   loginUrl: "https://www.linkedin.com/login",
-  async isLoggedIn(page) { await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded" }); await sleep(3000); return /linkedin\.com\/feed/.test(page.url()); },
+  async isLoggedIn(page) { await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded" }); await sleep(3500); return /linkedin\.com\/feed/.test(page.url()) && !(await page.locator('input#session_key, input[name="session_key"]').count()); },
   async post(page, d) {
     await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded" });
     await sleep(3000);
@@ -108,7 +108,7 @@ const linkedin = {
 const activerain = {
   home: "https://activerain.com/",
   loginUrl: "https://activerain.com/login",
-  async isLoggedIn(page) { await page.goto("https://activerain.com/blogs/new", { waitUntil: "domcontentloaded" }); await sleep(2500); return !/login|sign_in/.test(page.url()); },
+  async isLoggedIn(page) { await page.goto("https://activerain.com/blogs/new", { waitUntil: "domcontentloaded" }); await sleep(3000); return !/login|sign_in|users\/sign/.test(page.url()) && !(await page.locator('input[type="password"]').count()); },
   async post(page, d) {
     await page.goto("https://activerain.com/blogs/new", { waitUntil: "domcontentloaded" });
     await sleep(3000);
@@ -130,7 +130,7 @@ const activerain = {
 const biggerpockets = {
   home: "https://www.biggerpockets.com/forums",
   loginUrl: "https://www.biggerpockets.com/login",
-  async isLoggedIn(page) { await page.goto("https://www.biggerpockets.com/forums", { waitUntil: "domcontentloaded" }); await sleep(2500); return (await page.locator('a[href*="/users/"], [data-testid*="avatar"], a:has-text("Log Out")').count()) > 0 && !/login/.test(page.url()); },
+  async isLoggedIn(page) { await page.goto("https://www.biggerpockets.com/forums", { waitUntil: "domcontentloaded" }); await sleep(3000); return !/login|signup/.test(page.url()) && (await page.locator('a[href*="/users/"], a:has-text("Log Out"), [data-testid*="avatar"], img[alt*="avatar" i]').count()) > 0; },
   async post(page, d) {
     const forum = process.env.BP_FORUM_URL || "https://www.biggerpockets.com/forums/88"; // default: a general discussion forum; set BP_FORUM_URL to the right one
     await page.goto(forum, { waitUntil: "domcontentloaded" });
@@ -153,7 +153,7 @@ const biggerpockets = {
 const quora = {
   home: "https://www.quora.com/",
   loginUrl: "https://www.quora.com/",
-  async isLoggedIn(page) { await page.goto("https://www.quora.com/", { waitUntil: "domcontentloaded" }); await sleep(2500); return (await page.locator('button:has-text("Add question"), [aria-label*="Add question"]').count()) > 0; },
+  async isLoggedIn(page) { await page.goto("https://www.quora.com/", { waitUntil: "domcontentloaded" }); await sleep(3000); return !(await page.locator('input[type="password"]').count()) && (await page.locator('button:has-text("Add question"), [aria-label*="Add question"]').count()) > 0; },
   async post(page, d) {
     await page.goto(process.env.QUORA_SPACE_URL || "https://www.quora.com/", { waitUntil: "domcontentloaded" });
     await sleep(3000);
@@ -175,7 +175,7 @@ const quora = {
 const reddit = {
   home: "https://www.reddit.com/",
   loginUrl: "https://www.reddit.com/login/",
-  async isLoggedIn(page) { await page.goto("https://www.reddit.com/", { waitUntil: "domcontentloaded" }); await sleep(3000); return (await page.locator('[data-testid="user-drawer-button"], #expand-user-drawer-button, a[href*="/user/"]').count()) > 0; },
+  async isLoggedIn(page) { await page.goto("https://www.reddit.com/settings/", { waitUntil: "domcontentloaded" }); await sleep(3500); return /reddit\.com\/settings/.test(page.url()) && !/login/.test(page.url()) && !(await page.locator('input[name="password"]').count()); },
   async post(page, d) {
     const sub = process.env.REDDIT_SUBREDDIT || "u_" + (process.env.REDDIT_USERNAME || "");
     if (!sub || sub === "u_") throw new Error("set REDDIT_SUBREDDIT or REDDIT_USERNAME");
