@@ -80,14 +80,35 @@ app.post("/post", apiAuth, async (req, res) => {
 app.get("/open/:platform", basicAuth, async (req, res) => {
   const impl = P[req.params.platform];
   if (!impl) return res.status(404).send("unknown platform");
-  await openForLogin(req.params.platform, impl.loginUrl);
+  // Optional ?url= : a sign-in link from an email (Medium, Substack) opened in that platform's browser profile.
+  let url = impl.loginUrl;
+  if (req.query.url) {
+    try { const u = new URL(String(req.query.url)); if (u.protocol !== "https:") throw new Error("https only"); url = u.toString(); }
+    catch (e) { return res.status(400).send("bad url: " + e.message); }
+  }
+  await openForLogin(req.params.platform, url);
   res.redirect("/vnc/vnc.html?autoconnect=1&resize=scale&path=vnc/websockify");
+});
+
+// Screenshot of whatever that platform's browser is showing right now (for diagnosing a stuck login).
+app.get("/peek/:platform", basicAuth, async (req, res) => {
+  const impl = P[req.params.platform];
+  if (!impl) return res.status(404).send("unknown platform");
+  try {
+    const { getContext } = require("./browser");
+    const ctx = await getContext(req.params.platform);
+    const pages = ctx.pages().filter((p) => !/^about:blank/.test(p.url()));
+    const page = pages[pages.length - 1];
+    if (!page) return res.status(404).send("no open page");
+    const png = await page.screenshot({ fullPage: false });
+    res.set("x-page-url", page.url()).type("png").send(png);
+  } catch (e) { res.status(500).send(String(e)); }
 });
 
 // Login hub: one link per platform.
 app.get("/login", basicAuth, (_req, res) => {
-  const rows = Object.keys(P).map((k) => `<li><a href="/open/${k}">${k}</a></li>`).join("");
-  res.send(`<!doctype html><meta name="viewport" content="width=device-width"><body style="font-family:system-ui;padding:24px;max-width:640px"><h1>Poster logins</h1><p>Click a platform. A browser window opens in the next screen; sign in there like you normally would. The session is kept, so this is a one-time step per platform (until the site logs you out). Close nothing; just come back here for the next one.</p><ul>${rows}</ul><p><a href="/vnc/vnc.html?autoconnect=1&resize=scale&path=vnc/websockify">Open the browser screen</a></p></body>`);
+  const rows = Object.keys(P).map((k) => `<li style="margin:10px 0"><a href="/open/${k}"><b>${k}</b></a> <form method="get" action="/open/${k}" style="display:inline;margin-left:12px"><input name="url" placeholder="or paste a sign-in link from your email" size="38"> <button>Open link</button></form></li>`).join("");
+  res.send(`<!doctype html><meta name="viewport" content="width=device-width"><body style="font-family:system-ui;padding:24px;max-width:760px"><h1>Poster logins</h1><p>Click a platform name. A browser window opens in the next screen; sign in there like you normally would. The session is kept, so this is a one-time step per platform (until the site logs you out).</p><p><b>Medium and Substack sign in by emailed link.</b> Request the link from your normal browser, then paste the link from the email into that platform's box here and click Open link; it opens inside the poster browser and signs it in.</p><ul style="list-style:none;padding:0">${rows}</ul><p><a href="/vnc/vnc.html?autoconnect=1&resize=scale&path=vnc/websockify">Open the browser screen</a></p></body>`);
 });
 
 // Screenshots of failures, for debugging from the sweep report.
