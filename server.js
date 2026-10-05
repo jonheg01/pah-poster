@@ -53,8 +53,11 @@ app.post("/post", apiAuth, async (req, res) => {
   if (!impl) return res.status(400).json({ error: "unknown platform" });
   if (busy) return res.status(429).json({ error: "busy, retry later" });
   busy = true;
-  const { title, paragraphs } = splitDraft(req.body.body);
-  const draft = { ...req.body, title: req.body.title || title, paragraphs, body: String(req.body.body || "") };
+  // Long-form drafts carry the title on line one. Short drafts (reddit, quora, biggerpockets) come with an explicit
+  // title from the sweep and the whole body is content.
+  const full = String(req.body.body || "");
+  const { title, paragraphs } = req.body.title ? { title: req.body.title, paragraphs: full.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean) } : splitDraft(full);
+  const draft = { ...req.body, title, paragraphs, body: full };
   try {
     const result = await withPage(platform, async (page) => {
       if (!(await impl.isLoggedIn(page))) return { ok: false, needs_login: true, login_url: impl.loginUrl };
