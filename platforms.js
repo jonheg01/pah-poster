@@ -28,7 +28,7 @@ const signoff = (d) => `\n\nJon Hegreness, REALTOR and Associate Broker, Howe Re
 const medium = {
   home: "https://medium.com/me/stories/drafts",
   loginUrl: "https://medium.com/m/signin",
-  async isLoggedIn(page) { await page.goto("https://medium.com/me/settings", { waitUntil: "domcontentloaded" }); await sleep(3000); return /medium\.com\/me\//.test(page.url()); },
+  async isLoggedIn(page) { await page.goto("https://medium.com/me/settings", { waitUntil: "networkidle", timeout: 45000 }).catch(() => null); await sleep(2000); const t = await page.evaluate(() => document.body?.innerText || ""); return /medium\.com\/me\//.test(page.url()) && !/Sign in with email|Welcome back|Create one/.test(t); },
   async post(page, d) {
     if (!d.source_url) throw new Error("medium needs source_url (the PAH post) for import");
     await page.goto("https://medium.com/p/import", { waitUntil: "domcontentloaded" });
