@@ -101,6 +101,7 @@ app.get("/peek/:platform", basicAuth, async (req, res) => {
     const page = pages[pages.length - 1];
     if (!page) return res.status(404).send("no open page");
     const png = await page.screenshot({ fullPage: false });
+    if (req.query.b64) return res.json({ url: page.url(), title: await page.title().catch(() => ""), png_b64: png.toString("base64") });
     res.set("x-page-url", page.url()).type("png").send(png);
   } catch (e) { res.status(500).send(String(e)); }
 });
