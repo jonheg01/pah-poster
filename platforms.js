@@ -28,7 +28,20 @@ const signoff = (d) => `\n\nJon Hegreness, REALTOR and Associate Broker, Howe Re
 const medium = {
   home: "https://medium.com/me/stories/drafts",
   loginUrl: "https://medium.com/m/signin",
-  async isLoggedIn(page) { await page.goto("https://medium.com/me/settings", { waitUntil: "networkidle", timeout: 45000 }).catch(() => null); await sleep(2000); const t = await page.evaluate(() => document.body?.innerText || ""); return /medium\.com\/me\//.test(page.url()) && !/Sign in with email|Welcome back|Create one/.test(t); },
+  async isLoggedIn(page) {
+    await page.goto("https://medium.com/me/settings", { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => null);
+    // let redirects settle, then require a positive logged-in marker (never just the absence of login text)
+    for (let i = 0; i < 20; i++) {
+      await sleep(1000);
+      const u = page.url();
+      if (/\/m\/signin|\/m\/login|signin|login/i.test(u)) return false;
+      const t = await page.evaluate(() => document.body?.innerText || "").catch(() => "");
+      if (/Sign in with email|Welcome back|Create one|Sign in with Google/.test(t)) return false;
+      const positive = (await page.locator('a[href*="/new-story"], a[href*="/me/settings/account"], a[href*="/me/settings/security"]').count()) > 0 || /Sign out|Email address|Account|Publishing/.test(t);
+      if (/medium\.com\/me\//.test(u) && positive && t.length > 200) return true;
+    }
+    return false;
+  },
   async post(page, d) {
     if (!d.source_url) throw new Error("medium needs source_url (the PAH post) for import");
     await page.goto("https://medium.com/p/import", { waitUntil: "domcontentloaded" });
