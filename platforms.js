@@ -108,7 +108,7 @@ const linkedin = {
 const activerain = {
   home: "https://activerain.com/",
   loginUrl: "https://activerain.com/login",
-  async isLoggedIn(page) { await page.goto("https://activerain.com/blogs/new", { waitUntil: "domcontentloaded" }); await sleep(3000); return !/login|sign_in|users\/sign/.test(page.url()) && !(await page.locator('input[type="password"]').count()); },
+  async isLoggedIn(page) { await page.goto("https://activerain.com/blogs/new", { waitUntil: "domcontentloaded" }); await sleep(3000); const t = await page.evaluate(() => document.body?.innerText || ""); return /activerain\.com\/blogs\/new/.test(page.url()) && !/\bLog In\b/.test(t) && !(await page.locator('input[type="password"]').count()); },
   async post(page, d) {
     await page.goto("https://activerain.com/blogs/new", { waitUntil: "domcontentloaded" });
     await sleep(3000);
@@ -130,7 +130,7 @@ const activerain = {
 const biggerpockets = {
   home: "https://www.biggerpockets.com/forums",
   loginUrl: "https://www.biggerpockets.com/login",
-  async isLoggedIn(page) { await page.goto("https://www.biggerpockets.com/forums", { waitUntil: "domcontentloaded" }); await sleep(3000); return !/login|signup/.test(page.url()) && (await page.locator('a[href*="/users/"], a:has-text("Log Out"), [data-testid*="avatar"], img[alt*="avatar" i]').count()) > 0; },
+  async isLoggedIn(page) { await page.goto("https://www.biggerpockets.com/forums", { waitUntil: "domcontentloaded" }); await sleep(3000); const t = await page.evaluate(() => document.body?.innerText || ""); return !/login|signup/.test(page.url()) && !/\bLog in\b/.test(t) && !/\bJoin free\b/.test(t); },
   async post(page, d) {
     const forum = process.env.BP_FORUM_URL || "https://www.biggerpockets.com/forums/88"; // default: a general discussion forum; set BP_FORUM_URL to the right one
     await page.goto(forum, { waitUntil: "domcontentloaded" });
@@ -175,7 +175,7 @@ const quora = {
 const reddit = {
   home: "https://www.reddit.com/",
   loginUrl: "https://www.reddit.com/login/",
-  async isLoggedIn(page) { await page.goto("https://www.reddit.com/settings/", { waitUntil: "domcontentloaded" }); await sleep(3500); return /reddit\.com\/settings/.test(page.url()) && !/login/.test(page.url()) && !(await page.locator('input[name="password"]').count()); },
+  async isLoggedIn(page) { await page.goto("https://www.reddit.com/settings/", { waitUntil: "domcontentloaded" }); await sleep(3500); const t = await page.evaluate(() => document.body?.innerText || ""); return /reddit\.com\/settings/.test(page.url()) && !/blocked by network security/i.test(t) && !/\bLog In\b/.test(t) && !(await page.locator('input[name="password"]').count()); },
   async post(page, d) {
     const sub = process.env.REDDIT_SUBREDDIT || "u_" + (process.env.REDDIT_USERNAME || "");
     if (!sub || sub === "u_") throw new Error("set REDDIT_SUBREDDIT or REDDIT_USERNAME");
