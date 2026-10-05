@@ -56,7 +56,13 @@ function splitDraft(body) {
   return { title, paragraphs };
 }
 
-app.get("/health", (_req, res) => res.json({ ok: true, platforms: Object.keys(P), busy }));
+app.get("/health", (_req, res) => {
+  // profile dirs and their cookie DB size prove the /data volume survives restarts
+  const root = process.env.PROFILE_ROOT || "/data/profiles";
+  let profiles = {};
+  try { for (const d of fs.readdirSync(root)) { const f = path.join(root, d, "Default", "Cookies"); profiles[d] = fs.existsSync(f) ? fs.statSync(f).size : null; } } catch (e) { profiles = { error: String(e) }; }
+  res.json({ ok: true, platforms: Object.keys(P), busy, uptime_s: Math.round(process.uptime()), profiles });
+});
 
 // Login state per platform (opens each profile briefly).
 app.get("/status", apiAuth, async (req, res) => {
@@ -141,6 +147,9 @@ app.get("/shots/:name", apiAuth, (req, res) => { const f = path.join(SHOTS, path
 // noVNC (static + websocket) behind basic auth.
 const vncProxy = createProxyMiddleware({ target: "http://127.0.0.1:6080", changeOrigin: true, ws: true, pathRewrite: (p) => p.replace(/^\/vnc(?=\/|$)/, "") || "/" });
 app.use("/vnc", basicAuth, vncProxy);
+
+// Flush browser profiles to disk before the container stops, so sessions survive redeploys.
+for (const sig of ["SIGTERM", "SIGINT"]) process.on(sig, async () => { try { await require("./browser").closeAll(); } catch {} process.exit(0); });
 
 const port = Number(process.env.PORT || 3000);
 const server = app.listen(port, () => console.log("pah-poster listening on", port));
