@@ -1,0 +1,13 @@
+{
+  "name": "pah-poster",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser posting service for the RealtyClientEngine marketing sweep: Medium, Substack, LinkedIn, ActiveRain, BiggerPockets, Quora, Reddit. One persistent logged-in Chromium profile per platform, a noVNC window for the one-time login, and an internal-token HTTP API the sweep calls.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.0",
+    "playwright": "1.47.2"
+  }
+}
