@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/playwright:v1.47.2-jammy
 
 # Headful Chromium on a virtual display, shared over VNC so Jon can log in to each platform once.
+ENV DEBIAN_FRONTEND=noninteractive TZ=America/Phoenix
 RUN apt-get update && apt-get install -y --no-install-recommends xvfb x11vnc novnc websockify fluxbox \
   && rm -rf /var/lib/apt/lists/*
 
