@@ -41,7 +41,14 @@ app.get("/status", apiAuth, async (req, res) => {
   const only = req.query.platform ? [String(req.query.platform)] : Object.keys(P);
   for (const k of only) {
     if (!P[k]) { out[k] = { error: "unknown" }; continue; }
-    try { out[k] = { logged_in: await withPage(k, (page) => P[k].isLoggedIn(page)) }; } catch (e) { out[k] = { error: String(e).slice(0, 200) }; }
+    try {
+      out[k] = await withPage(k, async (page) => {
+        const logged_in = await P[k].isLoggedIn(page);
+        if (!req.query.debug) return { logged_in };
+        const text = await page.evaluate(() => (document.body?.innerText || "").replace(/\s+/g, " ").slice(0, 400)).catch(() => "");
+        return { logged_in, url: page.url(), title: await page.title().catch(() => ""), text };
+      });
+    } catch (e) { out[k] = { error: String(e).slice(0, 200) }; }
   }
   res.json(out);
 });
