@@ -16,6 +16,29 @@ const VNC_USER = process.env.POSTER_VNC_USER || "jon";
 const VNC_PASS = process.env.POSTER_VNC_PASSWORD || "";
 let busy = false;
 
+// Session detection by saved cookie, so status checks never load the sites (loading them from a datacenter IP
+// trips Cloudflare and bot blocks). Strict platforms: no cookie means logged out, full stop. Others fall back to
+// the platform's page check when the cookie is unknown.
+const SESSION_COOKIES = {
+  medium: { names: ["sid"], strict: true },
+  substack: { names: ["substack.sid"], strict: true },
+  linkedin: { names: ["li_at"], strict: true },
+  reddit: { names: ["reddit_session"], strict: true },
+  quora: { names: ["m-login"], strict: false },
+  activerain: { names: ["remember_user_token", "remember_token", "user_credentials"], strict: false },
+  biggerpockets: { names: ["remember_user_token", "remember_token"], strict: false },
+};
+async function loggedIn(k, page, ctx, allowPageCheck = true) {
+  const spec = SESSION_COOKIES[k];
+  if (spec) {
+    const cs = await ctx.cookies().catch(() => []);
+    const hit = cs.some((c) => spec.names.includes(c.name) && c.value && c.value !== "0");
+    if (hit) return true;
+    if (spec.strict || !allowPageCheck) return false;
+  }
+  return P[k].isLoggedIn(page);
+}
+
 function apiAuth(req, res, next) { if (!TOKEN || req.get("x-internal-token") !== TOKEN) return res.status(401).json({ error: "unauthorized" }); next(); }
 function basicAuth(req, res, next) {
   const h = req.get("authorization") || "";
@@ -42,9 +65,9 @@ app.get("/status", apiAuth, async (req, res) => {
   for (const k of only) {
     if (!P[k]) { out[k] = { error: "unknown" }; continue; }
     try {
-      out[k] = await withPage(k, async (page) => {
-        const logged_in = await P[k].isLoggedIn(page);
-        if (!req.query.debug) return { logged_in };
+      out[k] = await withPage(k, async (page, ctx) => {
+        const logged_in = await loggedIn(k, page, ctx, !!req.query.debug);
+        if (!req.query.debug) return { logged_in, cookies: (await ctx.cookies().catch(() => [])).map((c) => c.name).slice(0, 40) };
         const text = await page.evaluate(() => (document.body?.innerText || "").replace(/\s+/g, " ").slice(0, 400)).catch(() => "");
         return { logged_in, url: page.url(), title: await page.title().catch(() => ""), text };
       });
@@ -67,7 +90,7 @@ app.post("/post", apiAuth, async (req, res) => {
   const draft = { ...req.body, title, paragraphs, body: full };
   try {
     const result = await withPage(platform, async (page) => {
-      if (!(await impl.isLoggedIn(page))) return { ok: false, needs_login: true, login_url: impl.loginUrl };
+      if (!(await loggedIn(platform, page, ctx))) return { ok: false, needs_login: true, login_url: impl.loginUrl };
       try { const r = await impl.post(page, draft); return { ok: true, ...r }; }
       catch (e) { const s = await shot(page, platform); return { ok: false, error: String(e).slice(0, 400), screenshot: s, page_url: page.url() }; }
     });
